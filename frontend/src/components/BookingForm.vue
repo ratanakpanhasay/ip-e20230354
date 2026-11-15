@@ -57,13 +57,21 @@ function submitBooking() {
 }
 </script>
 
+
 <template>
-  <section>
+  <section class="booking-form">
     <h2>Book an Appointment</h2>
 
+    <p class="form-description">
+      Choose your preferred appointment date and time.
+    </p>
+
     <form @submit.prevent="submitBooking">
-      <div>
-        <label for="appointment-date">Select Date:</label>
+      <!-- Appointment Date -->
+      <div class="form-group">
+        <label for="appointment-date">
+          Select Date
+        </label>
 
         <input
           id="appointment-date"
@@ -72,8 +80,11 @@ function submitBooking() {
         />
       </div>
 
-      <div>
-        <label for="appointment-time">Select Time:</label>
+      <!-- Appointment Time -->
+      <div class="form-group">
+        <label for="appointment-time">
+          Select Time
+        </label>
 
         <select
           id="appointment-time"
@@ -88,16 +99,101 @@ function submitBooking() {
         </select>
       </div>
 
-      <p v-if="error" role="alert">{{ error }}</p>
-      <p v-if="success" role="status">{{ success }}</p>
+      <!-- Validation Feedback -->
+      <p v-if="error" class="error-message" role="alert">
+        {{ error }}
+      </p>
 
-      <button type="submit">Book Appointment</button>
+      <p v-if="success" class="success-message" role="status">
+        {{ success }}
+      </p>
+
+      <!-- Submit Button -->
+      <button type="submit" class="submit-button">
+        Book Appointment
+      </button>
     </form>
-
-  <p>
-    Appointments in memory:
-    {{ appointmentsStore.appointments.length }}
-  </p>
-
   </section>
 </template>
+
+
+<style scoped>
+.booking-form {
+  width: 100%;
+}
+
+.booking-form h2 {
+  color: #17213c;
+  font-size: 26px;
+  margin: 0 0 8px;
+}
+
+.form-description {
+  color: #64748b;
+  font-size: 15px;
+  margin-bottom: 28px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.form-group label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #17213c;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #17213c;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #0b1752;
+  box-shadow: 0 0 0 3px rgba(11, 23, 82, 0.12);
+}
+
+.submit-button {
+  width: 100%;
+  padding: 14px 20px;
+  margin-top: 8px;
+  background: #0b1752;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.submit-button:hover {
+  background: #172776;
+}
+
+.error-message {
+  color: #b42318;
+  background: #fff1f0;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.success-message {
+  color: #17603a;
+  background: #edf8f1;
+  padding: 12px;
+  border-radius: 8px;
+}
+</style>

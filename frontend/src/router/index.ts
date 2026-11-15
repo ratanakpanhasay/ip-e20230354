@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue'
 import DoctorDetailView from '../views/DoctorDetailView.vue'
 import MyAppointmentsView from '../views/MyAppointmentsView.vue'
 import DoctorDashboardView from '../views/DoctorDashboardView.vue'
+import ManageAvailabilityView from '../views/ManageAvailabilityView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -30,7 +31,13 @@ const router = createRouter({
       name: 'doctor-dashboard',
       component: DoctorDashboardView,
     },
+    {
+      path: '/doctor/availability',
+      name: 'doctor-availability',
+      component: ManageAvailabilityView,
+    },
   ],
 })
 
 export default router
+
