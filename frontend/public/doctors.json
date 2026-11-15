@@ -1,0 +1,17 @@
+[
+    {
+        "id": 1,
+        "name": "Panha Say",
+        "specialty": "Cardiologist"
+    },
+    {
+        "id": 2,
+        "name": "Sokha Chum",
+        "specialty": "Dermatologist"
+    },
+    {
+        "id": 3,
+        "name": "Rithy Lim",
+        "specialty": "Pediatrician"
+    }
+]
