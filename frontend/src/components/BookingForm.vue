@@ -1,13 +1,13 @@
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAppointmentsStore } from '../stores/appointments'
+import { useAvailabilityStore } from '../stores/availability'
 
-
+// Receive the selected doctor's ID
 const props = defineProps<{
   doctorId: number
 }>()
-
 
 // Form data
 const appointmentDate = ref('')
@@ -16,25 +16,131 @@ const appointmentTime = ref('')
 // Validation and feedback messages
 const error = ref('')
 const success = ref('')
-const appointmentsStore = useAppointmentsStore()
 
+// Pinia stores
+const appointmentsStore = useAppointmentsStore()
+const availabilityStore = useAvailabilityStore()
+
+// Days of the week
+const daysOfWeek = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+]
+
+// Find the selected doctor's availability
+const doctorAvailability = computed(() => {
+  return availabilityStore.schedules.find(
+    (schedule) => schedule.doctorId === props.doctorId
+  )
+})
+
+// Convert HH:mm into minutes since midnight
+function toMinutes(time: string): number {
+  const [hours = 0, minutes = 0] = time.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+// Automatically generate available appointment times
+const availableTimes = computed(() => {
+  const schedule = doctorAvailability.value
+
+  // No schedule or date selected
+  if (!schedule || !appointmentDate.value) {
+    return []
+  }
+
+  // Use noon to determine the selected day reliably
+  const selectedDate = new Date(
+    `${appointmentDate.value}T12:00:00`
+  )
+
+  const selectedDay = daysOfWeek[selectedDate.getDay()]
+
+  // Doctor is not working on the selected day
+  if (
+    !selectedDay ||
+    !schedule.workingDays.includes(selectedDay)
+  ) {
+    return []
+  }
+
+  // Doctor's start and end times in minutes
+  const start = toMinutes(schedule.startTime)
+  const end = toMinutes(schedule.endTime)
+
+  const slots: string[] = []
+
+  // Generate appointments lasting 60 minutes
+  for (
+    let minutes = start;
+    minutes + 60 <= end;
+    minutes += 60
+  ) {
+    const hours = String(
+      Math.floor(minutes / 60)
+    ).padStart(2, '0')
+
+    const mins = String(
+      minutes % 60
+    ).padStart(2, '0')
+
+    const time = `${hours}:${mins}`
+
+    const selectedDateTime = new Date(
+      `${appointmentDate.value}T${time}`
+    )
+
+    // Only show future appointment slots
+
+    // Check whether another patient has booked this slot
+    const isBooked = appointmentsStore.appointments.some(
+      (appointment) =>
+        appointment.doctorId === props.doctorId &&
+        appointment.date === appointmentDate.value &&
+        appointment.time === time &&
+        appointment.status !== 'cancelled'
+    )
+
+    // Show only future and unbooked appointment slots
+    if (selectedDateTime > new Date() && !isBooked) {
+      slots.push(time)
+    }
+
+  }
+
+  return slots
+})
+
+// Clear the selected time when date or schedule changes
+watch([appointmentDate, doctorAvailability], () => {
+  appointmentTime.value = ''
+  error.value = ''
+  success.value = ''
+})
+
+// Handle appointment booking
 function submitBooking() {
-  // Clear previous messages
+  // Clear previous feedback
   error.value = ''
   success.value = ''
 
-  // Check required fields
+  // Validate required fields
   if (!appointmentDate.value || !appointmentTime.value) {
     error.value = 'Please select a date and time.'
     return
   }
 
-  // Combine the date and time
+  // Combine the selected date and time
   const selectedDateTime = new Date(
     `${appointmentDate.value}T${appointmentTime.value}`
   )
 
-  // Prevent booking in the past
+  // Prevent appointments in the past
   if (
     Number.isNaN(selectedDateTime.getTime()) ||
     selectedDateTime <= new Date()
@@ -43,20 +149,42 @@ function submitBooking() {
     return
   }
 
+  // Retrieve the doctor's schedule
+  const schedule = doctorAvailability.value
 
-  // Add the validated appointment to Pinia
+  if (!schedule) {
+    error.value = 'This doctor has not set availability yet.'
+    return
+  }
+
+  // Check whether the doctor works on the selected day
+  const selectedDay = daysOfWeek[selectedDateTime.getDay()]
+
+  if (
+    !selectedDay ||
+    !schedule.workingDays.includes(selectedDay)
+  ) {
+    error.value = 'The doctor is not available on this day.'
+    return
+  }
+
+  // Ensure the selected time is a valid 60-minute slot
+  if (!availableTimes.value.includes(appointmentTime.value)) {
+    error.value = 'This appointment time is not available.'
+    return
+  }
+
+  // Save the appointment to Pinia
   appointmentsStore.addAppointment(
     props.doctorId,
     appointmentDate.value,
     appointmentTime.value
   )
 
-  // Show confirmation
+  // Show booking confirmation
   success.value = `Appointment added for Doctor ID ${props.doctorId}!`
-
 }
 </script>
-
 
 <template>
   <section class="booking-form">
@@ -89,33 +217,58 @@ function submitBooking() {
         <select
           id="appointment-time"
           v-model="appointmentTime"
+          :disabled="availableTimes.length === 0"
         >
-          <option value="">Choose a time</option>
-          <option value="09:00">09:00 AM</option>
-          <option value="10:00">10:00 AM</option>
-          <option value="11:00">11:00 AM</option>
-          <option value="14:00">02:00 PM</option>
-          <option value="15:00">03:00 PM</option>
+          <option value="">
+            Choose a time
+          </option>
+
+          <option
+            v-for="time in availableTimes"
+            :key="time"
+            :value="time"
+          >
+            {{ time }}
+          </option>
         </select>
+
+        <!-- No available appointment slots -->
+        <p
+          v-if="appointmentDate && availableTimes.length === 0"
+          class="error-message"
+        >
+          No available appointment times for this date.
+        </p>
       </div>
 
       <!-- Validation Feedback -->
-      <p v-if="error" class="error-message" role="alert">
+      <p
+        v-if="error"
+        class="error-message"
+        role="alert"
+      >
         {{ error }}
       </p>
 
-      <p v-if="success" class="success-message" role="status">
+      <!-- Success Feedback -->
+      <p
+        v-if="success"
+        class="success-message"
+        role="status"
+      >
         {{ success }}
       </p>
 
       <!-- Submit Button -->
-      <button type="submit" class="submit-button">
+      <button
+        type="submit"
+        class="submit-button"
+      >
         Book Appointment
       </button>
     </form>
   </section>
 </template>
-
 
 <style scoped>
 .booking-form {
